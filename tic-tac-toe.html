@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        *,*::after,*::before{
+            box-sizing: border-box;
+        }
+        body{
+            margin: 0;
+            overflow: hidden;
+        }
+        :root{
+            --cell-size:100px;
+            --mark-size:calc(var(--cell-size)*.9)
+        }
+        .board{
+            width:100vw;
+            height:100vh;
+            display:grid;
+            justify-content: center;
+            align-content: center;
+            grid-template-columns: repeat(3,auto);
+            justify-items: center;
+            align-items: center;
+        }
+        .cell{
+            width:var(--cell-size);
+            height:var(--cell-size);
+            border: 1px solid black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            cursor: pointer;
+        }
+        .cell:first-child,
+        .cell:nth-child(2),
+        .cell:nth-child(3){
+            border-top:none;
+        }
+        .cell:first-child,
+        .cell:nth-child(3n+1){
+            border-left: none;
+        }
+        .cell:nth-child(3n+3){
+            border-right:none
+        }
+        .cell:last-child,
+        .cell:nth-child(7),
+        .cell:nth-child(8){
+            border-bottom: none;
+        }
+        
+        .cell.x::before,.cell.x::after,
+        .board.x .cell:not(.x):not(.circle):hover::before,
+        .board.x .cell:not(.x):not(.circle):hover::after
+        {
+            content: '';
+            position: absolute;
+            width:calc(var(--mark-size)*.15);
+            height:var(--mark-size);
+            background-color: black;
+        }
+        .cell.x,.cell.circle{
+            cursor: not-allowed;
+        }
+        .cell.x::before,.board.x .cell:not(.x):not(.circle):hover::before
+        {
+            transform: rotate(45deg);
+        }
+        .cell.x::after,.board.x .cell:not(.x):not(.circle):hover::after{
+            transform: rotate(-45deg);
+        }
+        .board.x .cell:not(.x):not(.circle):hover::before,
+        .board.x .cell:not(.x):not(.circle):hover::after{
+            background-color: lightgrey;
+        }
+        
+        
+        .cell.circle::before,.cell.circle::after,
+        .board.circle .cell:not(.x):not(.circle):hover::before,
+        .board.circle .cell:not(.x):not(.circle):hover::after{
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+        }
+        .cell.circle::before,.board.circle .cell:not(.x):not(.circle):hover::before{
+            width:var(--mark-size);
+            height:var(--mark-size);
+            background-color: black;
+
+        }
+        .cell.circle::after,.board.circle .cell:not(.x):not(.circle):hover::after{
+            width:calc(var(--mark-size)*.7);
+            height:calc(var(--mark-size)*.7);
+            background-color: white;
+        }
+        .board.circle .cell:not(.x):not(.circle):hover::before
+        {
+            background-color: lightgrey;
+        }
+        .result{
+            display: none;
+            position: fixed;
+            top:0;
+            bottom:0;
+            right:0;
+            left:0;
+            background-color: rgba(0, 0, 0, 0.9);
+            justify-content: center;
+            align-items: center;
+            color:white;
+            font-size:5rem;
+            flex-direction: column;            
+        }
+        
+        .result button{
+            font-size: 3rem;
+            background-color: white;
+            border:1px solid black;
+            padding:.25em .5em;
+            cursor: pointer;
+            border-radius: 10px;
+            outline: none;
+        }
+        .result button:hover{
+            background-color: black;
+            color:white;
+            border:1px solid white;
+            transition: 0.6s;
+        }
+        .result button:active{
+            transform: scale(0.5)    
+        }
+       
+        .result.show{
+            display:flex;
+            animation-name: resultopen;
+            animation-duration: 800ms;
+        }
+        @keyframes resultopen{
+            0% {top:-1000px;}
+            100% {top:0px;}
+        }
+        .heading{
+            position: absolute;
+            /* z-index:2; */
+            margin-bottom: 0;
+            margin-left:40%;
+            font-size: 50px;
+        }
+        /* span{
+            position: absolute;
+            background-color: #fff;
+            transform: translate(-50%,50%);
+            pointer-events: none;
+            animation:animate 1s linear infinite;
+        }
+        @keyframes animate {
+            0%{
+                width:0;
+                height: 0;
+                opacity: 0.2;
+            }
+            100%{
+                width:500px;
+                height: 500px;
+                opacity: 0;
+            } 
+        } */
+
+
+        
+
+    </style>
+</head>
+<body >
+    <h1 class="heading">Tic Tac Toe </h1>
+    <div class="board " id="board">
+        <div class="cell " data-cell></div>
+        <div class="cell " data-cell></div>
+        <div class="cell" data-cell></div>
+        <div class="cell" data-cell></div>
+        <div class="cell" data-cell></div>
+        <div class="cell" data-cell></div>
+        <div class="cell" data-cell></div>
+        <div class="cell" data-cell></div>
+        <div class="cell" data-cell></div>
+    </div>
+    <div class="result" id = 'result'>
+        <div class="result-text" id="result-text"></div>
+        <button class="restart-button" id="restart-button">Restart</button>
+    </div>
+    
+<script>
+    const cellElements = document.querySelectorAll('[data-cell]');
+    var circle_class = 'circle';
+    var x_class = 'x';
+    let winning_combinations = [
+        [0,1,2],
+        [3,4,5],
+        [6,7,8],
+        [0,3,6],
+        [1,4,7],
+        [2,5,8],
+        [0,4,8],
+        [2,4,6]
+    ];
+    let winningMessage= document.getElementById('result-text')
+    let board = document.getElementById('board');
+    let result = document.getElementById('result');
+    const restartButton = document.getElementById('restart-button')
+    let circleTurn;
+
+    startGame();    
+    function startGame(e){
+        // ripplefn();
+        circleTurn=false
+        cellElements.forEach(cell=>{
+            cell.classList.remove(x_class);
+            cell.classList.remove(circle_class);
+            cell.removeEventListener('click',handleClick)
+            cell.addEventListener('click',handleClick,{once:true})
+        })
+        setboardHoverClass();
+        result.classList.remove('show');
+    }
+    restartButton.addEventListener('click',startGame);
+    // function ripplefn(e){
+    //     let x = e.clientX - e.target.offsetLeft;
+    //     let y = e.clientY - e.target.offsetTop;
+    //     let ripples = document.createElement('span');
+    //     ripples.style.left = x + 'px';
+    //     ripples.style.right = y+ 'px';
+    //     this.appendChild(ripples);
+    //     setTimeout(()=>{
+    //         ripples.remove()
+    //     },1000);
+    // }
+
+    function handleClick(e){
+        const cell = e.target;
+        const currentClass= circleTurn?circle_class:x_class;
+        placeMark(cell,currentClass);
+        if(checkWin(currentClass)){
+            endGame(false)
+        }
+        else if(isDraw()){
+            endGame(true);
+        }
+        else{
+            swapTurn();
+            setboardHoverClass();
+        }
+       
+    }
+    function placeMark(cell,currentClass){
+        cell.classList.add(currentClass)
+    }
+    function swapTurn(){
+        circleTurn=!circleTurn
+    }
+    function setboardHoverClass(){
+        board.classList.remove(x_class);
+        board.classList.remove(circle_class);
+        if(circleTurn){
+            board.classList.add(circle_class);
+        }
+        else{
+            board.classList.add(x_class)
+        }
+    }
+    function checkWin(currentClass){
+        return winning_combinations.some(cominations=>{
+            return cominations.every(index=>{
+                return cellElements[index].classList.contains(currentClass)
+            })
+        })
+    }
+    function isDraw(){
+        return [...cellElements].every(cell=>{
+            return cell.classList.contains(x_class) || 
+                   cell.classList.contains(circle_class)
+        })
+    }
+    function endGame(draw){
+        if(draw){
+            winningMessage.innerText='Draw!'
+        }
+        else{
+            winningMessage.innerText = `${circleTurn ? "0's":"X's"} wins!`
+        }
+        result.classList.add('show')
+    }
+
+</script>    
+</body>
+</html>
